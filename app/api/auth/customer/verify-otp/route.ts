@@ -12,19 +12,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Verify the OTP with Supabase Auth
-  const { error: verifyError } = await supabaseAdmin.auth.verifyOtp({
-    email,
-    token: otp,
-    type: "email",
-  });
+  // Look up the stored OTP token
+  const { data: tokenRow, error: tokenError } = await supabaseAdmin
+    .from("otp_tokens")
+    .select("id, token, expires_at")
+    .eq("email", email)
+    .single();
 
-  if (verifyError) {
+  if (tokenError || !tokenRow) {
     return NextResponse.json(
       { error: "Invalid or expired code. Please try again." },
       { status: 401 }
     );
   }
+
+  // Check expiry
+  if (new Date(tokenRow.expires_at) < new Date()) {
+    await supabaseAdmin.from("otp_tokens").delete().eq("id", tokenRow.id);
+    return NextResponse.json(
+      { error: "Code has expired. Please request a new one." },
+      { status: 401 }
+    );
+  }
+
+  // Check token match
+  if (tokenRow.token !== otp) {
+    return NextResponse.json(
+      { error: "Invalid or expired code. Please try again." },
+      { status: 401 }
+    );
+  }
+
+  // Valid — delete the used token
+  await supabaseAdmin.from("otp_tokens").delete().eq("id", tokenRow.id);
 
   // Fetch the device's dashboard URL
   const { data: device, error: deviceError } = await supabaseAdmin

@@ -36,3 +36,16 @@ CREATE INDEX idx_devices_subscription_end ON devices(subscription_end);
 -- =============================================================
 ALTER TABLE customers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE devices DISABLE ROW LEVEL SECURITY;
+
+-- OTP tokens table (custom OTP flow via Resend, bypassing Supabase Auth email)
+CREATE TABLE otp_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email TEXT NOT NULL,
+  token TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_otp_tokens_email ON otp_tokens(email);
+
+ALTER TABLE otp_tokens DISABLE ROW LEVEL SECURITY;

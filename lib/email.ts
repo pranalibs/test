@@ -2,8 +2,38 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = "notifications@yourdomain.com";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
+
+export async function sendOtpEmail({
+  to,
+  otp,
+}: {
+  to: string;
+  otp: string;
+}) {
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Your verification code: ${otp}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #1A1A1A;">
+        <h2 style="color: #C96442;">Verification Code</h2>
+        <p>Use the code below to log in. It expires in <strong>10 minutes</strong>.</p>
+        <div style="font-size: 40px; font-weight: bold; letter-spacing: 12px; text-align: center; padding: 24px; background: #F7F5F2; border-radius: 12px; margin: 24px 0;">
+          ${otp}
+        </div>
+        <p style="color: #8B7E74; font-size: 13px;">If you didn't request this code, you can safely ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #E8E3DC; margin: 24px 0;" />
+        <p style="color: #8B7E74; font-size: 12px;">Customer Management Platform</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send OTP email: ${error.message}`);
+  }
+}
 
 export async function sendSubscriptionExpiryEmail({
   customerEmail,
