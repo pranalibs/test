@@ -8,8 +8,12 @@ CREATE TABLE customers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
+  password_hash TEXT,          -- bcrypt hash; NULL until customer completes first-time setup
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: if customers table already exists, run this in Supabase SQL Editor:
+-- ALTER TABLE customers ADD COLUMN password_hash TEXT;
 
 -- Devices table
 CREATE TABLE devices (

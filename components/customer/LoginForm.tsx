@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export function LoginForm() {
+interface Props {
+  onSwitchToSetup: () => void;
+}
+
+export function LoginForm({ onSwitchToSetup }: Props) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,36 +22,25 @@ export function LoginForm() {
     setLoading(true);
     setError("");
 
-    const supabase = createSupabaseBrowserClient();
-
-    // Step 1: Sign in with Supabase Auth
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (signInError || !data.session) {
-      setLoading(false);
-      setError("Invalid email or password. Please try again.");
-      return;
-    }
-
-    // Step 2: Exchange Supabase token for our custom session cookie
     const res = await fetch("/api/auth/customer/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: data.session.access_token }),
+      body: JSON.stringify({ email, password }),
     });
 
-    const sessionData = await res.json();
+    const data = await res.json();
     setLoading(false);
 
     if (!res.ok) {
-      setError(sessionData.error || "Login failed. Please contact your administrator.");
+      if (data.needs_setup) {
+        setError("Account not set up yet.");
+        return;
+      }
+      setError(data.error || "Invalid email or password.");
       return;
     }
 
-    router.push(sessionData.redirect);
+    router.push(data.redirect);
   }
 
   return (
@@ -82,6 +74,15 @@ export function LoginForm() {
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
           {error}
+          {error.includes("not set up") && (
+            <button
+              type="button"
+              className="ml-1 underline text-brand hover:text-brand/80"
+              onClick={onSwitchToSetup}
+            >
+              Set up your account →
+            </button>
+          )}
         </div>
       )}
 

@@ -1,44 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { signSession } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { access_token } = body;
+  const { email, password } = body;
 
-  if (!access_token) {
-    return NextResponse.json({ error: "access_token is required" }, { status: 400 });
+  if (!email || !password) {
+    return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
   }
 
-  // Verify the Supabase Auth token using the anon key client
-  const supabaseAuth = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-
-  const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(access_token);
-
-  if (authError || !user?.email) {
-    return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
-  }
-
-  // Check the user's email exists in our customers table
-  const { data: customer, error: customerError } = await supabaseAdmin
+  // Look up customer by email
+  const { data: customer, error } = await supabaseAdmin
     .from("customers")
-    .select("id, email")
-    .eq("email", user.email)
+    .select("id, email, password_hash")
+    .eq("email", email.toLowerCase().trim())
     .single();
 
-  if (customerError || !customer) {
+  if (error || !customer) {
+    return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+  }
+
+  // Account not set up yet (no password)
+  if (!customer.password_hash) {
     return NextResponse.json(
-      { error: "This email is not registered as a customer. Please contact your administrator." },
+      {
+        error: "Account not set up yet. Please complete first-time setup.",
+        needs_setup: true,
+      },
       { status: 403 }
     );
   }
 
-  // Create the custom session cookie
+  // Verify password
+  const valid = await bcrypt.compare(password, customer.password_hash);
+  if (!valid) {
+    return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+  }
+
+  // Create signed session cookie
   const sessionValue = signSession(customer.email);
   const res = NextResponse.json({ redirect: "/dashboard" });
   res.cookies.set("cs", sessionValue, {
