@@ -1,4 +1,4 @@
-import { OtpLoginForm } from "@/components/customer/OtpLoginForm";
+import { LoginForm } from "@/components/customer/LoginForm";
 
 export default function CustomerLoginPage() {
   return (
@@ -21,15 +21,15 @@ export default function CustomerLoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-ink">Device Access</h1>
+          <h1 className="text-2xl font-semibold text-ink">Sign In</h1>
           <p className="text-sm text-soft mt-1">
-            Enter your device details to continue
+            Enter your email and password to continue
           </p>
         </div>
 
         {/* Login Card */}
         <div className="bg-panel border border-subtle rounded-2xl p-6 shadow-sm">
-          <OtpLoginForm />
+          <LoginForm />
         </div>
 
         <p className="text-center text-xs text-soft mt-6">

@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronRight,
   Trash2,
-  Settings,
   ExternalLink,
   Monitor,
   MapPin,
@@ -15,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AddDeviceDialog } from "@/components/admin/AddDeviceDialog";
+import { ManageSubscriptionDialog } from "@/components/admin/ManageSubscriptionDialog";
 import { daysUntil, formatDate } from "@/lib/utils";
 
 interface Device {
@@ -25,6 +25,7 @@ interface Device {
   dashboard_url: string | null;
   subscription_start: string;
   subscription_end: string;
+  is_suspended: boolean;
 }
 
 interface Customer {
@@ -39,7 +40,8 @@ interface Props {
   customers: Customer[];
 }
 
-function SubscriptionBadge({ subscriptionEnd }: { subscriptionEnd: string }) {
+function SubscriptionBadge({ subscriptionEnd, isSuspended }: { subscriptionEnd: string; isSuspended: boolean }) {
+  if (isSuspended) return <Badge variant="secondary" className="bg-orange-100 text-orange-700">Suspended</Badge>;
   const days = daysUntil(subscriptionEnd);
   if (days < 0) return <Badge variant="danger">Expired</Badge>;
   if (days <= 7) return <Badge variant="danger">{days}d left</Badge>;
@@ -50,9 +52,11 @@ function SubscriptionBadge({ subscriptionEnd }: { subscriptionEnd: string }) {
 function DeviceRow({
   device,
   onDeleted,
+  onRefresh,
 }: {
   device: Device;
   onDeleted: () => void;
+  onRefresh: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
 
@@ -94,7 +98,7 @@ function DeviceRow({
         </div>
       </td>
       <td className="px-4 py-3">
-        <SubscriptionBadge subscriptionEnd={device.subscription_end} />
+        <SubscriptionBadge subscriptionEnd={device.subscription_end} isSuspended={device.is_suspended} />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
@@ -114,15 +118,13 @@ function DeviceRow({
               Dashboard
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled
-            title="Settings coming soon"
-          >
-            <Settings className="h-3.5 w-3.5" />
-            Settings
-          </Button>
+          <ManageSubscriptionDialog
+            deviceId={device.id}
+            deviceName={device.device_name}
+            subscriptionEnd={device.subscription_end}
+            isSuspended={device.is_suspended}
+            onSuccess={onRefresh}
+          />
           <Button
             size="sm"
             variant="ghost"
@@ -194,7 +196,7 @@ function CustomerRow({
       {expanded &&
         customer.devices.map((device) => (
           <tr key={device.id} className="bg-page/30">
-            <DeviceRow device={device} onDeleted={onRefresh} />
+            <DeviceRow device={device} onDeleted={onRefresh} onRefresh={onRefresh} />
           </tr>
         ))}
     </>

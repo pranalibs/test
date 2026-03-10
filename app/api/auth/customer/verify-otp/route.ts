@@ -4,7 +4,9 @@ import { signSession } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { email, otp, device_id } = body;
+  const { email, otp, device_id, mode } = body;
+
+  const isDeviceVerifyMode = mode === "device_verify";
 
   if (!email || !otp || !device_id) {
     return NextResponse.json(
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
   // Valid — delete the used token
   await supabaseAdmin.from("otp_tokens").delete().eq("id", tokenRow.id);
 
-  // Verify device exists for this email
+  // Verify device exists
   const { data: device, error: deviceError } = await supabaseAdmin
     .from("devices")
     .select("id")
@@ -58,7 +60,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Device not found." }, { status: 404 });
   }
 
-  // Set signed session cookie and redirect to customer dashboard
+  // In device_verify mode, the user is already logged in — just confirm success
+  if (isDeviceVerifyMode) {
+    return NextResponse.json({ success: true });
+  }
+
+  // Default login mode: create session cookie and redirect
   const sessionValue = signSession(email);
   const res = NextResponse.json({ redirect: "/dashboard" });
   res.cookies.set("cs", sessionValue, {
