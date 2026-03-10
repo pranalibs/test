@@ -31,7 +31,7 @@ async function getCustomers() {
       id, name, email, created_at,
       devices (
         id, device_name, device_id, device_location,
-        dashboard_url, subscription_start, subscription_end
+        dashboard_url, subscription_start, subscription_end, is_suspended
       )
     `)
     .order("created_at", { ascending: false });

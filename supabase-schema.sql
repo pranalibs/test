@@ -8,8 +8,12 @@ CREATE TABLE customers (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
+  password_hash TEXT,          -- bcrypt hash; NULL until customer completes first-time setup
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: if customers table already exists, run this in Supabase SQL Editor:
+-- ALTER TABLE customers ADD COLUMN password_hash TEXT;
 
 -- Devices table
 CREATE TABLE devices (
@@ -21,8 +25,12 @@ CREATE TABLE devices (
   dashboard_url TEXT,
   subscription_start DATE DEFAULT CURRENT_DATE NOT NULL,
   subscription_end DATE DEFAULT (CURRENT_DATE + INTERVAL '1 year') NOT NULL,
+  is_suspended BOOLEAN DEFAULT FALSE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migration: if devices table already exists, run this in Supabase SQL Editor:
+-- ALTER TABLE devices ADD COLUMN is_suspended BOOLEAN DEFAULT FALSE NOT NULL;
 
 -- Indexes for performance
 CREATE INDEX idx_devices_device_id ON devices(device_id);

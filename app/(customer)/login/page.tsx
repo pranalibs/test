@@ -1,6 +1,12 @@
-import { OtpLoginForm } from "@/components/customer/OtpLoginForm";
+"use client";
+
+import { useState } from "react";
+import { LoginForm } from "@/components/customer/LoginForm";
+import { SetupAccountForm } from "@/components/customer/SetupAccountForm";
 
 export default function CustomerLoginPage() {
+  const [view, setView] = useState<"login" | "setup">("login");
+
   return (
     <div className="min-h-screen bg-page flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -21,18 +27,56 @@ export default function CustomerLoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-ink">Device Access</h1>
-          <p className="text-sm text-soft mt-1">
-            Enter your device details to continue
-          </p>
+          {view === "login" ? (
+            <>
+              <h1 className="text-2xl font-semibold text-ink">Sign In</h1>
+              <p className="text-sm text-soft mt-1">Enter your email and password to continue</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-semibold text-ink">Set Up Account</h1>
+              <p className="text-sm text-soft mt-1">First-time setup — verify your device and create a password</p>
+            </>
+          )}
         </div>
 
-        {/* Login Card */}
+        {/* Form Card */}
         <div className="bg-panel border border-subtle rounded-2xl p-6 shadow-sm">
-          <OtpLoginForm />
+          {view === "login" ? (
+            <LoginForm onSwitchToSetup={() => setView("setup")} />
+          ) : (
+            <SetupAccountForm onSwitchToLogin={() => setView("login")} />
+          )}
         </div>
 
-        <p className="text-center text-xs text-soft mt-6">
+        {/* Toggle link */}
+        <p className="text-center text-sm text-soft mt-4">
+          {view === "login" ? (
+            <>
+              First time here?{" "}
+              <button
+                type="button"
+                className="text-brand hover:underline font-medium"
+                onClick={() => setView("setup")}
+              >
+                Set up your account →
+              </button>
+            </>
+          ) : (
+            <>
+              Already have a password?{" "}
+              <button
+                type="button"
+                className="text-brand hover:underline font-medium"
+                onClick={() => setView("login")}
+              >
+                Sign in →
+              </button>
+            </>
+          )}
+        </p>
+
+        <p className="text-center text-xs text-soft mt-4">
           Admin?{" "}
           <a href="/admin/login" className="text-brand hover:underline">
             Admin portal
