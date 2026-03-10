@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { signSession } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -46,26 +47,27 @@ export async function POST(req: NextRequest) {
   // Valid — delete the used token
   await supabaseAdmin.from("otp_tokens").delete().eq("id", tokenRow.id);
 
-  // Fetch the device's dashboard URL
+  // Verify device exists for this email
   const { data: device, error: deviceError } = await supabaseAdmin
     .from("devices")
-    .select("dashboard_url, device_name")
+    .select("id")
     .eq("device_id", device_id)
     .single();
 
   if (deviceError || !device) {
-    return NextResponse.json(
-      { error: "Device not found." },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Device not found." }, { status: 404 });
   }
 
-  if (!device.dashboard_url) {
-    return NextResponse.json(
-      { error: "No dashboard URL configured for this device. Contact your administrator." },
-      { status: 400 }
-    );
-  }
+  // Set signed session cookie and redirect to customer dashboard
+  const sessionValue = signSession(email);
+  const res = NextResponse.json({ redirect: "/dashboard" });
+  res.cookies.set("cs", sessionValue, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24, // 24 hours
+    path: "/",
+  });
 
-  return NextResponse.json({ redirect_url: device.dashboard_url });
+  return res;
 }

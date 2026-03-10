@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { maskEmail } from "@/lib/utils";
 
 export function OtpLoginForm() {
+  const router = useRouter();
   const [step, setStep] = useState<"device" | "otp">("device");
   const [deviceName, setDeviceName] = useState("");
   const [deviceId, setDeviceId] = useState("");
@@ -63,8 +65,8 @@ export function OtpLoginForm() {
       return;
     }
 
-    // Redirect to device dashboard
-    window.location.href = data.redirect_url;
+    // Redirect to customer dashboard
+    router.push(data.redirect);
   }
 
   if (step === "device") {

@@ -4,6 +4,15 @@ import { createServerClient } from "@supabase/ssr";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Protect customer dashboard — require cs cookie
+  if (pathname.startsWith("/dashboard")) {
+    const cs = request.cookies.get("cs")?.value;
+    if (!cs) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return NextResponse.next();
+  }
+
   // Only protect admin routes (except /admin/login)
   if (!pathname.startsWith("/admin") || pathname === "/admin/login") {
     return NextResponse.next();
@@ -44,5 +53,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/dashboard"],
 };
