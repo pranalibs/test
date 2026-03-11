@@ -5,6 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { CustomerTable } from "@/components/admin/CustomerTable";
 import { DashboardHeader } from "@/components/admin/DashboardHeader";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PricingTable } from "@/components/admin/PricingTable";
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -72,12 +74,27 @@ export default async function DashboardPage() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <DashboardHeader customerCount={customers.length} />
+        <Tabs defaultValue="customers" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <TabsList className="bg-panel border border-subtle p-1 rounded-xl">
+              <TabsTrigger value="customers" className="rounded-lg px-6">Customers</TabsTrigger>
+              <TabsTrigger value="pricing" className="rounded-lg px-6">Device Pricing</TabsTrigger>
+            </TabsList>
+          </div>
 
-        {/* Customer Table Card */}
-        <div className="bg-panel border border-subtle rounded-2xl shadow-sm overflow-hidden">
-          <CustomerTable customers={customers} />
-        </div>
+          <TabsContent value="customers" className="space-y-6 mt-0">
+            <DashboardHeader customerCount={customers.length} />
+            <div className="bg-panel border border-subtle rounded-2xl shadow-sm overflow-hidden">
+              <CustomerTable customers={customers} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="pricing" className="mt-0">
+            <div className="bg-panel border border-subtle rounded-2xl shadow-sm overflow-hidden">
+              <PricingTable />
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
