@@ -7,6 +7,7 @@ import { DashboardHeader } from "@/components/admin/DashboardHeader";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PricingTable } from "@/components/admin/PricingTable";
+import { DevTab } from "@/components/admin/DevTab";
 
 async function getAdminUser() {
   const cookieStore = await cookies();
@@ -79,6 +80,7 @@ export default async function DashboardPage() {
             <TabsList className="bg-panel border border-subtle p-1 rounded-xl">
               <TabsTrigger value="customers" className="rounded-lg px-6">Customers</TabsTrigger>
               <TabsTrigger value="pricing" className="rounded-lg px-6">Device Pricing</TabsTrigger>
+              <TabsTrigger value="dev" className="rounded-lg px-6">Dev</TabsTrigger>
             </TabsList>
           </div>
 
@@ -92,6 +94,12 @@ export default async function DashboardPage() {
           <TabsContent value="pricing" className="mt-0">
             <div className="bg-panel border border-subtle rounded-2xl shadow-sm overflow-hidden">
               <PricingTable />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="dev" className="mt-0">
+            <div className="bg-panel border border-subtle rounded-2xl shadow-sm overflow-hidden">
+              <DevTab />
             </div>
           </TabsContent>
         </Tabs>

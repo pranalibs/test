@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { generateChecksum } from "@/lib/phonepe";
+import { generateChecksum, httpsPost } from "@/lib/phonepe";
 
 const MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID!;
 const SALT_KEY = process.env.PHONEPE_SALT_KEY!;
@@ -56,16 +56,13 @@ export async function POST(req: Request) {
   const checksum = generateChecksum(JSON.stringify(payload), "/pg/v1/pay", SALT_KEY, SALT_INDEX);
 
   try {
-    const response = await fetch(`${PHONEPE_HOST}/pg/v1/pay`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-      },
-      body: JSON.stringify({ request: base64Payload }),
-    });
+    const response = await httpsPost(
+      `${PHONEPE_HOST}/pg/v1/pay`,
+      { "Content-Type": "application/json", "X-VERIFY": checksum },
+      JSON.stringify({ request: base64Payload })
+    );
 
-    const result = await response.json();
+    const result = JSON.parse(response.body);
 
     if (result.success && result.data?.instrumentResponse?.redirectInfo?.url) {
       return NextResponse.json({ url: result.data.instrumentResponse.redirectInfo.url });
@@ -73,8 +70,9 @@ export async function POST(req: Request) {
       console.error("PhonePe error:", result);
       return NextResponse.json({ error: result.message || "Failed to initiate payment" }, { status: 500 });
     }
-  } catch (err) {
-    console.error("Payment initiation error:", err);
+  } catch (err: unknown) {
+    const cause = err instanceof Error ? err.cause : undefined;
+    console.error("Payment initiation error:", err, cause ? `cause: ${JSON.stringify(cause)}` : "");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
