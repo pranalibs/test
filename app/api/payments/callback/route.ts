@@ -59,16 +59,18 @@ export async function POST(req: Request) {
         }
       }
     } else {
-      // Handle failure
-      const { merchantTransactionId } = data;
-      await supabaseAdmin
-        .from("payments")
-        .update({
-          status: "FAILED",
-          provider_response: decodedResponse,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("merchant_transaction_id", merchantTransactionId);
+      // Handle failure - data may be absent for certain failure codes
+      const merchantTransactionId = data?.merchantTransactionId;
+      if (merchantTransactionId) {
+        await supabaseAdmin
+          .from("payments")
+          .update({
+            status: "FAILED",
+            provider_response: decodedResponse,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("merchant_transaction_id", merchantTransactionId);
+      }
     }
 
     return NextResponse.json({ success: true });

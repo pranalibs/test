@@ -26,7 +26,15 @@ export function PricingTable() {
   async function fetchItems() {
     try {
       const res = await fetch("/api/admin/pricing");
+      if (!res.ok) {
+        console.error("Pricing API returned status", res.status);
+        return;
+      }
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        console.error("Unexpected pricing response", data);
+        return;
+      }
       setItems(data);
     } catch (err) {
       console.error("Failed to fetch pricing", err);
