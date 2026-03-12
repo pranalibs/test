@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+interface PricingItem {
+  id: string;
+  device_name: string;
+  price: number;
+}
 
 interface Props {
   customerId: string;
@@ -27,6 +34,23 @@ export function AddDeviceDialog({ customerId, customerName, onSuccess }: Props) 
   const [dashboardUrl, setDashboardUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
+  const [loadingPricing, setLoadingPricing] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoadingPricing(true);
+    fetch("/api/admin/pricing")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setPricingItems(data);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPricing(false));
+  }, [open]);
+
+  const selectedPricing = pricingItems.find((p) => p.device_name === deviceName);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +85,17 @@ export function AddDeviceDialog({ customerId, customerName, onSuccess }: Props) 
     onSuccess();
   }
 
+  function handleOpenChange(val: boolean) {
+    setOpen(val);
+    if (!val) {
+      setDeviceName("");
+      setDeviceId("");
+      setLocation("");
+      setDashboardUrl("");
+      setError("");
+    }
+  }
+
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
@@ -68,7 +103,7 @@ export function AddDeviceDialog({ customerId, customerName, onSuccess }: Props) 
         Add Device
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Device</DialogTitle>
@@ -78,28 +113,58 @@ export function AddDeviceDialog({ customerId, customerName, onSuccess }: Props) 
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="device-name">Device Name</Label>
-                <Input
+            {/* Device Type (from pricing table) */}
+            <div className="space-y-1.5">
+              <Label htmlFor="device-name">Device Type</Label>
+              {loadingPricing ? (
+                <div className={cn(
+                  "flex items-center h-9 px-3 rounded-lg border border-subtle bg-page text-sm text-soft"
+                )}>
+                  Loading device types...
+                </div>
+              ) : pricingItems.length === 0 ? (
+                <div className="rounded-lg border border-subtle bg-page/60 px-3 py-2.5 text-sm text-soft">
+                  No device types configured.{" "}
+                  <span className="text-brand font-medium">Add device pricing first</span> from the Device Pricing tab.
+                </div>
+              ) : (
+                <select
                   id="device-name"
-                  placeholder="e.g. Main Server"
                   value={deviceName}
                   onChange={(e) => setDeviceName(e.target.value)}
                   required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="device-id">Device ID</Label>
-                <Input
-                  id="device-id"
-                  placeholder="e.g. DEV-001"
-                  value={deviceId}
-                  onChange={(e) => setDeviceId(e.target.value)}
-                  required
-                />
-              </div>
+                  className={cn(
+                    "flex h-9 w-full rounded-lg border border-subtle bg-page px-3 py-1 text-sm text-ink",
+                    "focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand",
+                    "disabled:opacity-50"
+                  )}
+                >
+                  <option value="" disabled>Select device type...</option>
+                  {pricingItems.map((item) => (
+                    <option key={item.id} value={item.device_name}>
+                      {item.device_name} — ₹{item.price}/yr
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedPricing && (
+                <p className="text-xs text-soft">
+                  Yearly price: <span className="font-medium text-ink">₹{selectedPricing.price}</span>
+                </p>
+              )}
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="device-id">Device ID</Label>
+              <Input
+                id="device-id"
+                placeholder="e.g. DEV-001"
+                value={deviceId}
+                onChange={(e) => setDeviceId(e.target.value)}
+                required
+              />
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="location">Device Location</Label>
               <Input
@@ -128,11 +193,14 @@ export function AddDeviceDialog({ customerId, customerName, onSuccess }: Props) 
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button
+                type="submit"
+                disabled={loading || pricingItems.length === 0 || loadingPricing}
+              >
                 {loading ? "Adding..." : "Add Device"}
               </Button>
             </div>
