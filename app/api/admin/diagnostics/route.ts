@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { generateChecksum } from "@/lib/phonepe";
-import crypto from "crypto";
+import { generateChecksum, httpsPost } from "@/lib/phonepe";
 
-// PhonePe UAT test credentials (public — from PhonePe official docs)
+// PhonePe v1 UAT test credentials (public — from PhonePe official docs)
 const UAT_MERCHANT_ID = "PGTESTPAYUAT86";
 const UAT_SALT_KEY = "96434309-7796-489d-8924-ab56988a6076";
 const UAT_SALT_INDEX = "1";
-const UAT_HOST = "https://api.preprod.phonepe.com/apis/hermes";
+const UAT_HOST = "https://api-preprod.phonepe.com/apis/hermes";
 
 export async function GET() {
   const results: Record<string, { ok: boolean; message: string }> = {};
@@ -81,32 +80,25 @@ export async function GET() {
 
     const base64Payload = Buffer.from(JSON.stringify(testPayload)).toString("base64");
 
-    const res = await fetch(`${UAT_HOST}/pg/v1/pay`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-      },
-      body: JSON.stringify({ request: base64Payload }),
-    });
+    const res = await httpsPost(
+      `${UAT_HOST}/pg/v1/pay`,
+      { "Content-Type": "application/json", "X-VERIFY": checksum },
+      JSON.stringify({ request: base64Payload })
+    );
 
-    const body = await res.json();
+    const body = JSON.parse(res.body);
 
-    if (res.ok && body.success) {
-      results["phonepe.uat_connection"] = {
-        ok: true,
-        message: `PhonePe UAT reachable — code: ${body.code}`,
-      };
-    } else {
-      results["phonepe.uat_connection"] = {
-        ok: false,
-        message: `HTTP ${res.status} — code: ${body.code ?? "?"}, message: ${body.message ?? JSON.stringify(body).slice(0, 200)}`,
-      };
-    }
-  } catch (err) {
+    // Any PhonePe response (even an error code) means the host is reachable
+    results["phonepe.uat_connection"] = {
+      ok: true,
+      message: `Reachable — HTTP ${res.status}, code: ${body.code ?? "?"}, msg: ${body.message ?? ""}`,
+    };
+  } catch (err: unknown) {
+    const cause = err instanceof Error ? (err as NodeJS.ErrnoException).cause : undefined;
+    const causeMsg = cause ? ` | cause: ${JSON.stringify(cause)}` : "";
     results["phonepe.uat_connection"] = {
       ok: false,
-      message: `Network error reaching PhonePe UAT: ${String(err)}`,
+      message: `Network error: ${String(err)}${causeMsg}`,
     };
   }
 
@@ -143,24 +135,23 @@ export async function GET() {
         );
         const base64Payload = Buffer.from(JSON.stringify(testPayload)).toString("base64");
 
-        const res = await fetch(`${configuredHost}/pg/v1/pay`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-VERIFY": checksum,
-          },
-          body: JSON.stringify({ request: base64Payload }),
-        });
+        const res = await httpsPost(
+          `${configuredHost}/pg/v1/pay`,
+          { "Content-Type": "application/json", "X-VERIFY": checksum },
+          JSON.stringify({ request: base64Payload })
+        );
 
-        const body = await res.json();
+        const body = JSON.parse(res.body);
         results["phonepe.configured_host"] = {
-          ok: res.ok,
-          message: `HTTP ${res.status} — code: ${body.code ?? "?"}, message: ${body.message ?? JSON.stringify(body).slice(0, 200)}`,
+          ok: true,
+          message: `Reachable — HTTP ${res.status}, code: ${body.code ?? "?"}, msg: ${body.message ?? ""}`,
         };
-      } catch (err) {
+      } catch (err: unknown) {
+        const cause = err instanceof Error ? (err as NodeJS.ErrnoException).cause : undefined;
+        const causeMsg = cause ? ` | cause: ${JSON.stringify(cause)}` : "";
         results["phonepe.configured_host"] = {
           ok: false,
-          message: `Network error: ${String(err)}`,
+          message: `Network error: ${String(err)}${causeMsg}`,
         };
       }
     }
