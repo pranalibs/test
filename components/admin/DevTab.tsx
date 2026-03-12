@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, RefreshCw, Terminal } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, RefreshCw, Terminal, AlertTriangle, Copy, Check } from "lucide-react";
 
 interface CheckResult {
   ok: boolean;
@@ -27,6 +27,71 @@ const CHECK_LABELS: Record<string, string> = {
   "phonepe.configured_host": "PhonePe Configured Host",
 };
 
+// Hints shown below a failing check — keyed by check key, matched by message substring
+const CHECK_HINTS: Record<string, Array<{ match: string; hint: string; sql?: string }>> = {
+  "supabase.connection": [
+    {
+      match: "device_pricing",
+      hint: "The device_pricing table is missing. Run the SQL below in your Supabase project → SQL Editor.",
+      sql: `CREATE TABLE device_pricing (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  device_name TEXT UNIQUE NOT NULL,
+  price NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE device_pricing DISABLE ROW LEVEL SECURITY;`,
+    },
+  ],
+  "supabase.device_pricing_table": [
+    {
+      match: "device_pricing",
+      hint: "The device_pricing table is missing. Run the SQL below in your Supabase project → SQL Editor.",
+      sql: `CREATE TABLE device_pricing (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  device_name TEXT UNIQUE NOT NULL,
+  price NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE device_pricing DISABLE ROW LEVEL SECURITY;`,
+    },
+  ],
+  "phonepe.uat_connection": [
+    {
+      match: "fetch failed",
+      hint: "The server cannot reach the PhonePe API. This is usually a network/firewall restriction on your hosting platform (e.g. Vercel, Railway). Ensure outbound HTTPS to api.preprod.phonepe.com is allowed. Your actual payment flow will also be affected.",
+    },
+    {
+      match: "Network error",
+      hint: "The server cannot reach the PhonePe API. This is usually a network/firewall restriction on your hosting platform (e.g. Vercel, Railway). Ensure outbound HTTPS to api.preprod.phonepe.com is allowed. Your actual payment flow will also be affected.",
+    },
+  ],
+  "phonepe.configured_host": [
+    {
+      match: "fetch failed",
+      hint: "The server cannot reach your configured PhonePe host. Check that PHONEPE_HOST is correct and that outbound HTTPS is not blocked.",
+    },
+    {
+      match: "INVALID_TRANSACTION",
+      hint: "PhonePe API is reachable but rejected the test request. This is expected for diagnostic payloads — it means your credentials and network are working correctly.",
+    },
+    {
+      match: "UNAUTHORIZED",
+      hint: "PhonePe rejected the request as unauthorized. Check that PHONEPE_MERCHANT_ID, PHONEPE_SALT_KEY, and PHONEPE_SALT_INDEX are correct.",
+    },
+  ],
+};
+
+const DEVICE_PRICING_SQL = `CREATE TABLE device_pricing (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  device_name TEXT UNIQUE NOT NULL,
+  price NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE device_pricing DISABLE ROW LEVEL SECURITY;`;
+
 const CHECK_GROUPS = [
   {
     label: "Environment Variables",
@@ -48,6 +113,39 @@ const CHECK_GROUPS = [
     keys: ["phonepe.uat_connection", "phonepe.configured_host"],
   },
 ];
+
+function getHint(key: string, message: string): { hint: string; sql?: string } | null {
+  const hints = CHECK_HINTS[key];
+  if (!hints) return null;
+  const matched = hints.find((h) => message.toLowerCase().includes(h.match.toLowerCase()));
+  return matched ?? null;
+}
+
+function SqlBlock({ sql }: { sql: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await navigator.clipboard.writeText(sql);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="mt-2 rounded-lg bg-[#0D0D0D] border border-subtle overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-subtle">
+        <span className="text-[#8B8B8B] text-xs">SQL — run in Supabase SQL Editor</span>
+        <button
+          onClick={copy}
+          className="flex items-center gap-1 text-xs text-[#8B8B8B] hover:text-white transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="text-xs text-[#A8FF78] px-3 py-2 overflow-x-auto leading-relaxed">{sql}</pre>
+    </div>
+  );
+}
 
 export function DevTab() {
   const [loading, setLoading] = useState(false);
@@ -74,6 +172,11 @@ export function DevTab() {
   const checks = result?.checks ?? {};
   const totalChecks = Object.keys(checks).length;
   const passedChecks = Object.values(checks).filter((c) => c.ok).length;
+
+  const missingTable =
+    result &&
+    (checks["supabase.connection"]?.message?.includes("device_pricing") ||
+      checks["supabase.device_pricing_table"]?.message?.includes("device_pricing"));
 
   return (
     <div className="p-6 space-y-6">
@@ -140,6 +243,22 @@ export function DevTab() {
         </div>
       )}
 
+      {/* Quick-fix banner: missing device_pricing table */}
+      {missingTable && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-400 shrink-0" />
+            <span className="text-orange-400 text-sm font-medium">
+              Fix: Create the device_pricing table in Supabase
+            </span>
+          </div>
+          <p className="text-[#8B8B8B] text-xs">
+            Go to your Supabase project → SQL Editor → New Query, paste and run the SQL below. Then re-run diagnostics.
+          </p>
+          <SqlBlock sql={DEVICE_PRICING_SQL} />
+        </div>
+      )}
+
       {/* Check groups */}
       {result && (
         <div className="space-y-5">
@@ -157,21 +276,34 @@ export function DevTab() {
                   {groupChecks.map((key) => {
                     const check = checks[key];
                     const label = CHECK_LABELS[key] ?? key;
+                    const hint = !check.ok ? getHint(key, check.message) : null;
                     return (
-                      <div key={key} className="flex items-center gap-4 px-5 py-3">
-                        {check.ok ? (
-                          <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      <div key={key} className="px-5 py-3 space-y-2">
+                        <div className="flex items-center gap-4">
+                          {check.ok ? (
+                            <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                          )}
+                          <span className="text-white text-sm w-48 shrink-0">{label}</span>
+                          <span
+                            className={`text-sm font-mono truncate ${
+                              check.ok ? "text-[#8B8B8B]" : "text-red-400"
+                            }`}
+                            title={check.message}
+                          >
+                            {check.message}
+                          </span>
+                        </div>
+                        {hint && (
+                          <div className="ml-8 space-y-1">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
+                              <p className="text-yellow-500/90 text-xs leading-relaxed">{hint.hint}</p>
+                            </div>
+                            {hint.sql && <SqlBlock sql={hint.sql} />}
+                          </div>
                         )}
-                        <span className="text-white text-sm w-48 shrink-0">{label}</span>
-                        <span
-                          className={`text-sm font-mono truncate ${
-                            check.ok ? "text-[#8B8B8B]" : "text-red-400"
-                          }`}
-                        >
-                          {check.message}
-                        </span>
                       </div>
                     );
                   })}
@@ -195,21 +327,34 @@ export function DevTab() {
                 <div className="divide-y divide-subtle">
                   {extras.map((key) => {
                     const check = checks[key];
+                    const hint = !check.ok ? getHint(key, check.message) : null;
                     return (
-                      <div key={key} className="flex items-center gap-4 px-5 py-3">
-                        {check.ok ? (
-                          <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      <div key={key} className="px-5 py-3 space-y-2">
+                        <div className="flex items-center gap-4">
+                          {check.ok ? (
+                            <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                          )}
+                          <span className="text-white text-sm w-48 shrink-0">{key}</span>
+                          <span
+                            className={`text-sm font-mono truncate ${
+                              check.ok ? "text-[#8B8B8B]" : "text-red-400"
+                            }`}
+                            title={check.message}
+                          >
+                            {check.message}
+                          </span>
+                        </div>
+                        {hint && (
+                          <div className="ml-8">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
+                              <p className="text-yellow-500/90 text-xs leading-relaxed">{hint.hint}</p>
+                            </div>
+                            {hint.sql && <SqlBlock sql={hint.sql} />}
+                          </div>
                         )}
-                        <span className="text-white text-sm w-48 shrink-0">{key}</span>
-                        <span
-                          className={`text-sm font-mono truncate ${
-                            check.ok ? "text-[#8B8B8B]" : "text-red-400"
-                          }`}
-                        >
-                          {check.message}
-                        </span>
                       </div>
                     );
                   })}
