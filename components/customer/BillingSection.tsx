@@ -54,7 +54,15 @@ export function BillingSection({ initialDevices }: { initialDevices: Device[] })
     async function fetchPricing() {
       try {
         const res = await fetch("/api/admin/pricing"); // Reuse this to get prices
+        if (!res.ok) {
+          console.error("Pricing API returned status", res.status);
+          return;
+        }
         const data = await res.json();
+        if (!Array.isArray(data)) {
+          console.error("Unexpected pricing response", data);
+          return;
+        }
         const priceMap: Record<string, number> = {};
         data.forEach((item: any) => {
           priceMap[item.device_name] = item.price;
