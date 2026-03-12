@@ -13,81 +13,49 @@ export function RenewalPrompt({ deviceName, deviceId, daysLeft }: Props) {
   const isUrgent = daysLeft <= 7;
   const isExpired = daysLeft <= 0;
 
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "";
-  const message = encodeURIComponent(
-    `Hi, I have made the payment for renewal of my device "${deviceName}" (Device ID: ${deviceId}). Please find the payment screenshot attached. Kindly renew my subscription. Thank you.`
-  );
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-
   return (
     <div
       className={`rounded-xl border px-4 py-4 mb-3 ${
         isExpired || isUrgent
-          ? "bg-red-50 border-red-200"
-          : "bg-amber-50 border-amber-200"
+          ? "bg-red-50 border-red-200 shadow-sm"
+          : "bg-amber-50 border-amber-200 shadow-sm"
       }`}
     >
-      {/* Header */}
-      <div className="flex items-start gap-2 mb-3">
-        <AlertTriangle
-          className={`h-4 w-4 mt-0.5 shrink-0 ${
-            isExpired || isUrgent ? "text-red-500" : "text-amber-500"
-          }`}
-        />
-        <div>
-          <p className={`text-sm font-semibold ${isExpired || isUrgent ? "text-red-700" : "text-amber-700"}`}>
-            {isExpired
-              ? "Subscription Expired"
-              : isUrgent
-              ? `Subscription expiring in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}!`
-              : `Subscription expiring in ${daysLeft} days`}
-          </p>
-          <p className={`text-xs mt-0.5 ${isExpired || isUrgent ? "text-red-600" : "text-amber-600"}`}>
-            Scan the QR code below to pay and send us the confirmation via WhatsApp.
-          </p>
-        </div>
-      </div>
-
-      {/* QR + WhatsApp row */}
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        {/* PhonePe QR */}
-        <div className="shrink-0 flex flex-col items-center gap-1">
-          <div className="rounded-xl border border-subtle bg-white p-2 shadow-sm">
-            <Image
-              src="/phonepe-qr.png"
-              alt="PhonePe Payment QR Code"
-              width={120}
-              height={120}
-              className="rounded-lg"
-              unoptimized
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className={`mt-0.5 p-1.5 rounded-lg ${isExpired || isUrgent ? "bg-red-100" : "bg-amber-100"}`}>
+            <AlertTriangle
+              className={`h-4 w-4 ${
+                isExpired || isUrgent ? "text-red-600" : "text-amber-600"
+              }`}
             />
           </div>
-          <p className="text-xs text-soft text-center">Scan to pay via PhonePe</p>
+          <div>
+            <p className={`text-sm font-bold ${isExpired || isUrgent ? "text-red-800" : "text-amber-800"}`}>
+              {isExpired
+                ? "Subscription Expired"
+                : `Subscription expiring in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}!`}
+            </p>
+            <p className={`text-xs mt-0.5 font-medium ${isExpired || isUrgent ? "text-red-700/70" : "text-amber-700/70"}`}>
+              Please renew to maintain uninterrupted access to your dashboard.
+            </p>
+          </div>
         </div>
 
-        {/* Instructions + WhatsApp button */}
-        <div className="flex-1 space-y-3">
-          <ol className="text-xs text-soft space-y-1 list-decimal list-inside">
-            <li>Scan the QR code with PhonePe or any UPI app</li>
-            <li>Complete the payment</li>
-            <li>Take a screenshot of the payment confirmation</li>
-            <li>Tap the WhatsApp button below to send us the screenshot</li>
-          </ol>
-
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#25D366] hover:bg-[#1ebe5d] text-white text-sm font-medium transition-colors"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Send Payment Screenshot on WhatsApp
-          </a>
-
-          <p className="text-xs text-soft">
-            After we verify your payment, your subscription will be renewed manually within a few hours.
-          </p>
-        </div>
+        <button
+          onClick={() => {
+            const tabsList = document.querySelector('[role="tablist"]');
+            const billingTab = tabsList?.querySelector('[value="billing"]') as HTMLButtonElement;
+            billingTab?.click();
+          }}
+          className={`shrink-0 px-4 py-2 rounded-lg text-sm font-bold transition-all active:scale-95 ${
+            isExpired || isUrgent
+              ? "bg-red-600 text-white hover:bg-red-700 shadow-sm"
+              : "bg-amber-600 text-white hover:bg-amber-700 shadow-sm"
+          }`}
+        >
+          Renew Now
+        </button>
       </div>
     </div>
   );
