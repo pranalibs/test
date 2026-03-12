@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   const payload = {
     merchantId: MERCHANT_ID,
     merchantTransactionId,
-    merchantUserId: customer.id,
+    merchantUserId: customer.id.replace(/-/g, ""),
     amount: amount * 100, // PhonePe expects amount in paise
     redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?tab=billing&tid=${merchantTransactionId}`,
     redirectMode: "REDIRECT",
